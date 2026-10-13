@@ -39,11 +39,14 @@ jobs:
           PYTHONPATH=python python -m xroute validate examples/maps/warehouse.json
           PYTHONPATH=python python -m xroute convert examples/maps/grid.txt --to xml -o /tmp/grid.xml
           PYTHONPATH=python python -m xroute validate /tmp/grid.xml
-      - name: CMake build and tests
+      - name: CMake build and tests (manual and presets)
         run: |
           cmake -S . -B build/cmake
           cmake --build build/cmake
           ctest --test-dir build/cmake --output-on-failure
+          cmake --preset asan
+          cmake --build --preset asan
+          ctest --preset asan
   sanitizers:
     runs-on: ubuntu-latest
     steps:

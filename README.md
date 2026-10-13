@@ -33,7 +33,23 @@ make check
 make benchmark
 ```
 
-`make check` runs the C and Python tests. `make sanitizer` runs the native suite with AddressSanitizer and UndefinedBehaviorSanitizer when supported. `make format-check` checks the C sources when `clang-format` is installed. CMake is also supported:
+`make check` runs the C and Python tests. `make sanitizer` runs the native suite with AddressSanitizer and UndefinedBehaviorSanitizer when supported. `make format-check` checks the C sources when `clang-format` is installed.
+
+Modern CMake presets (`debug`, `release`, and `asan`) are configured in `CMakePresets.json`:
+
+```sh
+# Build and test with AddressSanitizer & UndefinedBehaviorSanitizer
+cmake --preset asan
+cmake --build --preset asan
+ctest --preset asan
+
+# Optimized release build
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+```
+
+Standard manual CMake builds are also supported:
 
 ```sh
 cmake -S . -B build/cmake
