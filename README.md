@@ -136,6 +136,7 @@ GitHub Pages site in `build/demo/`. Publishing is manual and opt-in—see the
 
 - [Import formats and validation limits](Docs/IMPORTS.md)
 - [Architecture and algorithms](Docs/ARCHITECTURE.md)
+- [Routing algorithms and kinematics](Docs/ROUTING_ALGORITHMS.md)
 - [C headers](include/xroute/xroute.h)
 - [C example](examples/basic_usage.c)
 - [Studio and CLI visualizations](Docs/images)

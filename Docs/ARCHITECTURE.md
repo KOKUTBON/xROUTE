@@ -86,6 +86,7 @@ When `opts.turn_penalty_cost > 0`:
 - The search state is expanded from $(u)$ to $(u, d)$ where $d \in \{1: \text{LEFT}, 2: \text{UP}, 3: \text{RIGHT}, 4: \text{DOWN}\}$.
 - If moving to adjacent node $v$ requires a direction $d_{\text{new}} \neq d_{\text{curr}}$ (and $d_{\text{curr}} \neq 0$), an additional cost penalty `turn_penalty_cost` is added to $g(v)$.
 - This encourages the vehicle to stay in straight corridors rather than zig-zagging, reflecting real-world industrial AGV steering overhead.
+- See [Routing Algorithms & Kinematic State Space](ROUTING_ALGORITHMS.md) for full mathematical formulation, admissibility proofs, memory footprint formulas, and topology benchmarks.
 
 ### Fleet Dispatcher (`xroute_router_find_nearest_operator`)
 - Input: Target rack `(corsia, campata)` and $K$ active forklifts.
