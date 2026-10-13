@@ -94,6 +94,10 @@ class Route:
     def steps(self) -> int:
         return len(self.points)
 
+    def to_geojson(self, origin_lat: float, origin_lon: float, resolution_meters: float = 1.0, **kwargs):
+        from .geojson import route_to_geojson
+        return route_to_geojson(self, origin_lat, origin_lon, resolution_meters, **kwargs)
+
     def __repr__(self):
         return f"<Route {self.steps} steps, {self.distance_meters:.2f}m, {self.estimated_time_sec:.1f}s, turns={self.turns}>"
 
@@ -459,3 +463,20 @@ class Warehouse:
             "cells": cells,
             "bays": bays_list
         }
+
+    def to_geojson(self, origin_lat: float, origin_lon: float, resolution_meters: float = 1.0):
+        from .geojson import aisles_to_geojson
+        return aisles_to_geojson(self, origin_lat, origin_lon, resolution_meters)
+
+
+from .geojson import aisles_to_geojson, grid_to_latlon, route_to_feature_collection, route_to_geojson
+
+__all__ = [
+    "Route",
+    "Warehouse",
+    "aisles_to_geojson",
+    "grid_to_latlon",
+    "route_to_feature_collection",
+    "route_to_geojson",
+]
+
