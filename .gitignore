@@ -1,0 +1,39 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+bin/
+obj/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE and Editor files
+*.cbp
+*.depend
+*.layout
+.vscode/
+.idea/
+
+# Output and temp files
+DistanceVector - Copia.txt
+*.pyc
+__pycache__/
+.playwright-cli/
+output/playwright/
+
+# Local deployment records and private credentials
+.env.local
+.env.production
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
+/data/private/
+/backups/

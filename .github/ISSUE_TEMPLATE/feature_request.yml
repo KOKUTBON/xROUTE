@@ -1,0 +1,18 @@
+name: Feature request
+description: Propose a concrete improvement for public benefit.
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private data, documents or vulnerability details. Follow SECURITY.md for private reports.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem and expected outcome
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Reproduction or proposal, version and environment
+    validations:
+      required: true

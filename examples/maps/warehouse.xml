@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Magazzino numRighe="12" numColonne="16" dimColonne="350" dimRighe="200">
+	<!-- Storage Racks Corsia 1 -->
+	<Cella x="2" y="2" Tipo="1" Corsia="1" Campata="1"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="3" y="2" Tipo="1" Corsia="1" Campata="2"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="4" y="2" Tipo="1" Corsia="1" Campata="3"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="5" y="2" Tipo="1" Corsia="1" Campata="4"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="6" y="2" Tipo="1" Corsia="1" Campata="5"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="7" y="2" Tipo="1" Corsia="1" Campata="6"><LatoAccessibile>up</LatoAccessibile></Cella>
+
+	<Cella x="2" y="3" Tipo="1" Corsia="1" Campata="7"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="3" y="3" Tipo="1" Corsia="1" Campata="8"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="4" y="3" Tipo="1" Corsia="1" Campata="9"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="5" y="3" Tipo="1" Corsia="1" Campata="10"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="6" y="3" Tipo="1" Corsia="1" Campata="11"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="7" y="3" Tipo="1" Corsia="1" Campata="12"><LatoAccessibile>dw</LatoAccessibile></Cella>
+
+	<!-- Storage Racks Corsia 2 -->
+	<Cella x="2" y="6" Tipo="1" Corsia="2" Campata="1"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="3" y="6" Tipo="1" Corsia="2" Campata="2"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="4" y="6" Tipo="1" Corsia="2" Campata="3"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="5" y="6" Tipo="1" Corsia="2" Campata="4"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="6" y="6" Tipo="1" Corsia="2" Campata="5"><LatoAccessibile>up</LatoAccessibile></Cella>
+	<Cella x="7" y="6" Tipo="1" Corsia="2" Campata="6"><LatoAccessibile>up</LatoAccessibile></Cella>
+
+	<Cella x="2" y="7" Tipo="1" Corsia="2" Campata="7"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="3" y="7" Tipo="1" Corsia="2" Campata="8"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="4" y="7" Tipo="1" Corsia="2" Campata="9"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="5" y="7" Tipo="1" Corsia="2" Campata="10"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="6" y="7" Tipo="1" Corsia="2" Campata="11"><LatoAccessibile>dw</LatoAccessibile></Cella>
+	<Cella x="7" y="7" Tipo="1" Corsia="2" Campata="12"><LatoAccessibile>dw</LatoAccessibile></Cella>
+
+	<!-- Traversable Racks & Direction Constraints -->
+	<Cella x="10" y="4" Tipo="2" Corsia="3" Campata="1">
+		<LatoAccessibile>up</LatoAccessibile><LatoAccessibile>dw</LatoAccessibile>
+		<SpostamentoPermesso>dx</SpostamentoPermesso><SpostamentoPermesso>dw</SpostamentoPermesso>
+	</Cella>
+
+	<!-- Obstacles -->
+	<Cella x="0" y="5" Tipo="4"/>
+	<Cella x="1" y="5" Tipo="4"/>
+	<Cella x="14" y="5" Tipo="4"/>
+	<Cella x="15" y="5" Tipo="4"/>
+</Magazzino>

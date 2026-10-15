@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>xROUTE Studio - Warehouse Routing & AGV Fleet Dispatch</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    canvas { touch-action: none; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-800 border-b border-slate-700 px-6 py-3 flex items-center justify-between shrink-0 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-route"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-lg tracking-tight text-white">xROUTE <span class="text-indigo-400 font-semibold">Studio</span></span>
+          <span class="text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-medium">v2.0</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Automated Warehouse Pathfinding & AGV Fleet Dispatch</p>
+      </div>
+    </div>
+
+    <!-- Active Map Badge & Quick Actions -->
+    <div class="flex items-center space-x-3">
+      <div id="mapBadge" class="hidden md:flex items-center space-x-2 bg-slate-700/60 border border-slate-600 px-3 py-1.5 rounded-lg text-xs">
+        <i class="fa-solid fa-warehouse text-indigo-400"></i>
+        <span id="mapNameText" class="font-semibold text-slate-200">Loaded Map</span>
+        <span id="mapDimText" class="text-slate-400 border-l border-slate-600 pl-2">0x0</span>
+      </div>
+
+      <button id="btnExportMap" disabled class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded-lg">Export JSON</button>
+      <button id="btnUploadModal" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center space-x-2 shadow-sm transition">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <span>Import Map</span>
+      </button>
+
+      <button id="btnStudioModal" title="Edit the current map as JSON" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center space-x-1.5 transition">
+        <i class="fa-solid fa-pen-ruler text-amber-400"></i>
+        <span class="hidden sm:inline">Map Studio</span>
+      </button>
+
+      <button id="btnSettingsModal" class="bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white p-2 rounded-lg transition" title="Routing Parameters">
+        <i class="fa-solid fa-sliders"></i>
+      </button>
+    </div>
+  </header>
+
+  <div id="importStatus" role="status" aria-live="polite" class="bg-slate-900 text-slate-300 text-xs px-6 py-2 border-b border-slate-700">Ready to import a warehouse map.</div>
+  <!-- Main Work Area -->
+  <div class="flex flex-1 overflow-hidden relative">
+
+    <!-- Left Controls & Metrics Sidebar -->
+    <aside class="w-80 lg:w-96 bg-slate-800/95 border-r border-slate-700 flex flex-col shrink-0 custom-scroll overflow-y-auto">
+      
+      <!-- Mode Tabs -->
+      <div class="p-4 border-b border-slate-700 space-y-2">
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Operational Mode</label>
+        <div class="grid grid-cols-2 gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-700/60">
+          <button id="tabBay" class="mode-tab active px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition bg-indigo-600 text-white shadow">
+            <i class="fa-solid fa-dolly"></i>
+            <span>Pick Bay</span>
+          </button>
+          <button id="tabPoint" class="mode-tab px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-arrows-to-dot"></i>
+            <span>Point-to-Point</span>
+          </button>
+          <button id="tabFleet" class="mode-tab px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-truck-ramp-box"></i>
+            <span>Fleet Dispatch</span>
+          </button>
+          <button id="tabHazard" class="mode-tab px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+            <span>Hazard Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode Specific Configuration Panels -->
+      <div class="p-4 border-b border-slate-700 space-y-4">
+        
+        <!-- Panel 1: Bay Routing -->
+        <div id="panelBay" class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300">Target Warehouse Bay</span>
+            <span class="text-[10px] text-slate-400">Or click rack on canvas</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-slate-400 block mb-1">Aisle (Corsia)</label>
+              <select id="selectCorsia" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="">Select...</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-400 block mb-1">Bay (Campata)</label>
+              <select id="selectCampata" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" disabled>
+                <option value="">Select...</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+            <i class="fa-solid fa-info-circle text-indigo-400 mr-1"></i>
+            Click anywhere on the warehouse floor to set Forklift start position.
+          </p>
+        </div>
+
+        <!-- Panel 2: Point to Point -->
+        <div id="panelPoint" class="space-y-2 hidden">
+          <span class="text-xs font-bold text-slate-300 block">Direct Navigation</span>
+          <p class="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 leading-relaxed">
+            1. <strong>Click once</strong> on canvas to place <span class="text-emerald-400 font-semibold">Start (S)</span>.<br>
+            2. <strong>Click again</strong> to place <span class="text-amber-400 font-semibold">Goal (G)</span>.
+          </p>
+          <div class="flex space-x-2 pt-1">
+            <button id="btnClearPoints" class="w-full bg-slate-700 hover:bg-slate-600 text-xs py-1.5 rounded-lg text-slate-200 transition">
+              Reset Points
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel 3: Fleet Dispatch -->
+        <div id="panelFleet" class="space-y-3 hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300">Active Forklift Fleet</span>
+            <button id="btnClearFleet" class="text-[11px] text-slate-400 hover:text-red-400">Clear</button>
+          </div>
+          <p class="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+            Click on corridor cells to place forklifts. Then select a target bay and click <strong>Dispatch Nearest</strong>.
+          </p>
+          <div id="fleetList" class="space-y-1.5 max-h-32 overflow-y-auto custom-scroll text-xs">
+            <span class="text-slate-500 italic block py-1">No forklifts placed yet. Click on canvas.</span>
+          </div>
+          <button id="btnRunFleet" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg text-xs shadow transition flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Dispatch Nearest Operator</span>
+          </button>
+        </div>
+
+        <!-- Panel 4: Hazard Mode -->
+        <div id="panelHazard" class="space-y-2 hidden">
+          <span class="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Dynamic Obstacle Injection</span>
+          </span>
+          <p class="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 leading-relaxed">
+            Click on any open aisle corridor cell to drop a temporary barrier (pallet drop or spill).
+            Paths will dynamically re-route around obstacles live.
+          </p>
+          <button id="btnClearHazards" class="w-full bg-slate-700 hover:bg-slate-600 text-xs py-1.5 rounded-lg text-slate-200 transition">
+            Clear All Temporary Hazards
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Live Calculation Results & Metrics -->
+      <div class="p-4 space-y-4 flex-1">
+        
+        <!-- Metrics Cards -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Path Telemetry</label>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-xl">
+              <span class="text-[10px] text-slate-400 uppercase block font-semibold">Distance</span>
+              <span id="metricDistance" class="text-lg font-bold text-emerald-400 font-mono">0.00 m</span>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-xl">
+              <span class="text-[10px] text-slate-400 uppercase block font-semibold">Estimated Time</span>
+              <span id="metricTime" class="text-lg font-bold text-indigo-400 font-mono">0.0 s</span>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-xl">
+              <span class="text-[10px] text-slate-400 uppercase block font-semibold">Steps</span>
+              <span id="metricSteps" class="text-base font-bold text-slate-200 font-mono">0</span>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-xl">
+              <span class="text-[10px] text-slate-400 uppercase block font-semibold">Turns</span>
+              <span id="metricTurns" class="text-base font-bold text-amber-400 font-mono">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warehouse Topology Summary -->
+        <div class="bg-slate-900/50 border border-slate-700/60 p-3 rounded-xl space-y-2 text-xs">
+          <div class="flex justify-between text-slate-400">
+            <span>Dimensions:</span>
+            <span id="statDimensions" class="font-mono text-slate-200 font-medium">0 x 0</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Cell Size:</span>
+            <span id="statCellSize" class="font-mono text-slate-200 font-medium">350 x 200 cm</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Total Bays:</span>
+            <span id="statBays" class="font-mono text-slate-200 font-medium">0</span>
+          </div>
+        </div>
+
+        <!-- Turn-by-Turn Waypoints list -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Waypoints</label>
+            <span id="waypointCount" class="text-[10px] text-slate-500">0 points</span>
+          </div>
+          <div id="waypointList" class="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2 max-h-40 overflow-y-auto custom-scroll text-[11px] font-mono space-y-1">
+            <span class="text-slate-500 italic block py-1 text-center font-sans">No route active</span>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- Center 2D Warehouse Interactive Canvas Viewport -->
+    <main class="flex-1 bg-slate-950 relative flex items-center justify-center overflow-hidden">
+      
+      <!-- Canvas Element -->
+      <canvas id="warehouseCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+      <!-- Canvas Floating Tool Overlay (Zoom / Pan / Fit) -->
+      <div class="absolute bottom-6 right-6 bg-slate-800/90 border border-slate-700 rounded-xl p-1.5 shadow-xl flex items-center space-x-1 backdrop-blur-sm">
+        <button id="btnZoomIn" class="w-8 h-8 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition" title="Zoom In">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+        <button id="btnZoomOut" class="w-8 h-8 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition" title="Zoom Out">
+          <i class="fa-solid fa-minus"></i>
+        </button>
+        <button id="btnFit" class="w-8 h-8 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition" title="Fit to Screen">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+        <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
+        <button id="btnExportSVG" class="px-2.5 h-8 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white flex items-center space-x-1.5 text-xs transition" title="Export as Vector SVG">
+          <i class="fa-solid fa-file-image text-amber-400"></i>
+          <span>SVG</span>
+        </button>
+      </div>
+
+      <!-- Hover Cell Inspector Bar -->
+      <div class="absolute top-4 left-4 bg-slate-800/90 border border-slate-700 px-3.5 py-1.5 rounded-lg shadow-lg text-xs font-mono text-slate-300 flex items-center space-x-3 pointer-events-none backdrop-blur-sm">
+        <span><span class="text-slate-500">X:</span> <strong id="inspX">0</strong></span>
+        <span><span class="text-slate-500">Y:</span> <strong id="inspY">0</strong></span>
+        <span><span class="text-slate-500">Type:</span> <strong id="inspType" class="text-indigo-400 font-sans">Corridor</strong></span>
+        <span id="inspBayBadge" class="hidden text-amber-300 font-sans bg-amber-950/80 px-1.5 py-0.5 rounded text-[10px]">C1-B1</span>
+      </div>
+
+      <!-- Legend Overlay -->
+      <div class="absolute top-4 right-4 bg-slate-800/80 border border-slate-700/80 p-2.5 rounded-xl shadow-lg text-[10px] text-slate-300 space-y-1.5 pointer-events-none backdrop-blur-sm hidden sm:block">
+        <div class="flex items-center space-x-2">
+          <span class="w-3.5 h-3.5 rounded bg-blue-600 block shrink-0"></span>
+          <span>Storage Rack (c)</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="w-3.5 h-3.5 rounded bg-cyan-500 block shrink-0"></span>
+          <span>Transit Rack (T)</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="w-3.5 h-3.5 rounded bg-red-500 block shrink-0"></span>
+          <span>Obstacle (x)</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="w-3.5 h-3.5 rounded bg-amber-500 block shrink-0"></span>
+          <span>Dynamic Hazard</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 block shrink-0"></span>
+          <span>Pick Access Side</span>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Drag-and-Drop / Import Map Modal -->
+  <div id="modalUpload" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 hidden backdrop-blur-xs">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <h3 class="font-bold text-base text-white flex items-center space-x-2">
+          <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i>
+          <span>Import Warehouse Map</span>
+        </h3>
+        <button id="btnCloseUpload" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <!-- Drag & Drop Target Area -->
+      <div id="dropzone" class="border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-8 text-center transition cursor-pointer bg-slate-900/50 space-y-2">
+        <i class="fa-solid fa-file-arrow-up text-3xl text-indigo-400 mb-1"></i>
+        <p class="text-sm font-semibold text-slate-200">Drop a map to detect, validate & render</p>
+        <p class="text-xs text-slate-400">XML · JSON · CSV / TSV · text grids — UTF-8, up to 4 MiB</p>
+        <input type="file" id="fileInput" class="hidden" accept=".xml,.json,.csv,.tsv,.txt,.map">
+      </div>
+
+      <!-- Raw Text Paste Option -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label class="text-xs text-slate-400 font-semibold">Or paste structured map content:</label>
+          <button id="btnLoadSample" class="text-xs text-indigo-400 hover:underline">Load Sample Map</button>
+        </div>
+        <textarea id="textMapContent" rows="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="<?xml version='1.0' encoding='UTF-8'?>&#10;<Magazzino numRighe='...' ...>"></textarea>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button id="btnCancelUpload" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300 transition">Cancel</button>
+        <button id="btnSubmitParse" class="px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center space-x-1.5 shadow-md">
+          <i class="fa-solid fa-check"></i>
+          <span>Process & Render Map</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="modalSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 hidden backdrop-blur-xs">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <h3 class="font-bold text-sm text-white">Kinematic & Routing Settings</h3>
+        <button id="btnCloseSettings" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Cruising Speed (m/s):</label>
+          <input id="inputSpeed" type="number" step="0.1" value="1.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Turn Penalty Cost (cm):</label>
+          <input id="inputTurnPenalty" type="number" step="10" value="50" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white">
+          <span class="text-[10px] text-slate-500">Adds virtual distance penalty per 90° turn to discourage zig-zagging.</span>
+        </div>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button id="btnSaveSettings" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-side Application Script -->
+  <script>
+    // State management
+    let state = {
+      mode: 'bay', // 'bay', 'point', 'fleet', 'hazard'
+      rawMapContent: '',
+      mapFormat: 'xml',
+      mapData: null,
+      startPoint: { x: 0, y: 0 },
+      goalPoint: null,
+      selectedCorsia: null,
+      selectedCampata: null,
+      fleet: [], // [{ id, x, y }]
+      hazards: new Set(), // Set of "x,y" strings
+      activeRoute: null,
+      // Viewport transform
+      zoom: 1.0,
+      panX: 40,
+      panY: 40,
+      isPanning: false,
+      lastMouseX: 0,
+      lastMouseY: 0,
+      // Settings
+      speed: 1.5,
+      turnPenalty: 50
+    };
+
+    const canvas = document.getElementById('warehouseCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Resize canvas to fill viewport
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      renderCanvas();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial load: fetch default sample map from backend
+    async function init() {
+      try {
+        const res = await fetch('/api/default_map');
+        const data = await res.json();
+        if (data.xml) {
+          loadMapContent(data.xml, 'xml');
+        }
+      } catch (err) {
+        console.error('Failed to load initial map', err);
+      }
+    }
+
+    let importGeneration = 0;
+    let routeGeneration = 0;
+    async function loadMapContent(content, format = 'auto') {
+      const generation = ++importGeneration;
+      const status = document.getElementById('importStatus');
+      status.textContent = 'Detecting format and validating map…';
+      try {
+        const res = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, format })
+        });
+        const result = await res.json();
+        if (generation !== importGeneration) return;
+        if (result.status === 'ok') {
+          ++routeGeneration;
+          state.rawMapContent = result.normalized_content;
+          state.mapFormat = result.normalized_format;
+          status.textContent = `${result.format.toUpperCase()} imported · ${result.map.cols} × ${result.map.rows} cells · ${result.map.bays.length} bays. ` + result.warnings.join('. ');
+          document.getElementById('btnExportMap').disabled = false;
+          state.mapData = result.map;
+          state.hazards.clear();
+          state.fleet = [];
+          state.activeRoute = null;
+          state.goalPoint = null;
+          state.selectedCorsia = null;
+          state.selectedCampata = null;
+          renderFleetList();
+          updateRouteTelemetry(null);
+
+          // Default start to first available traversable cell
+          findInitialStart();
+          populateBayDropdowns();
+          updateMapStats();
+          fitToScreen();
+          renderCanvas();
+
+          // Close modal if open
+          document.getElementById('modalUpload').classList.add('hidden');
+        } else {
+          status.textContent = 'Import failed: ' + result.message;
+          alert(status.textContent);
+        }
+      } catch (err) {
+        status.textContent = 'Import failed: ' + err.message;
+        alert(status.textContent);
+      }
+    }
+
+    document.getElementById('btnExportMap').addEventListener('click', () => {
+      if (!state.mapData) return;
+      const blob = new Blob([state.rawMapContent], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'warehouse.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    function findInitialStart() {
+      if (!state.mapData) return;
+      for (let y = 0; y < state.mapData.rows; y++) {
+        for (let x = 0; x < state.mapData.cols; x++) {
+          if (state.mapData.cells[y][x].type === 0) {
+            state.startPoint = { x, y };
+            return;
+          }
+        }
+      }
+      state.startPoint = { x: 0, y: 0 };
+    }
+
+    function updateMapStats() {
+      if (!state.mapData) return;
+      const m = state.mapData;
+      document.getElementById('mapNameText').textContent = 'Warehouse Map';
+      document.getElementById('mapDimText').textContent = `${m.cols}x${m.rows}`;
+      document.getElementById('mapBadge').classList.remove('hidden');
+
+      document.getElementById('statDimensions').textContent = `${m.cols} cols × ${m.rows} rows`;
+      document.getElementById('statCellSize').textContent = `${m.cell_width_cm} × ${m.cell_height_cm} cm`;
+      document.getElementById('statBays').textContent = m.bays ? m.bays.length : 0;
+    }
+
+    function populateBayDropdowns() {
+      const selectCorsia = document.getElementById('selectCorsia');
+      const selectCampata = document.getElementById('selectCampata');
+      selectCorsia.innerHTML = '<option value="">Select Aisle...</option>';
+      selectCampata.innerHTML = '<option value="">Select Bay...</option>';
+      selectCampata.disabled = true;
+
+      if (!state.mapData || !state.mapData.bays) return;
+
+      const aisles = [...new Set(state.mapData.bays.map(b => b.corsia))].sort((a, b) => a - b);
+      aisles.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = `Corsia ${c}`;
+        selectCorsia.appendChild(opt);
+      });
+    }
+
+    document.getElementById('selectCorsia').addEventListener('change', (e) => {
+      const corsia = parseInt(e.target.value);
+      state.selectedCorsia = corsia;
+      const selectCampata = document.getElementById('selectCampata');
+      selectCampata.innerHTML = '<option value="">Select Bay...</option>';
+
+      if (!corsia || !state.mapData) {
+        selectCampata.disabled = true;
+        return;
+      }
+
+      const bays = state.mapData.bays.filter(b => b.corsia === corsia).sort((a, b) => a.campata - b.campata);
+      bays.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.campata;
+        opt.textContent = `Campata ${b.campata}`;
+        selectCampata.appendChild(opt);
+      });
+      selectCampata.disabled = false;
+    });
+
+    document.getElementById('selectCampata').addEventListener('change', (e) => {
+      const campata = parseInt(e.target.value);
+      state.selectedCampata = campata;
+      if (campata && state.selectedCorsia) {
+        requestBayRoute(state.selectedCorsia, campata);
+      }
+    });
+
+    async function requestBayRoute(corsia, campata) {
+      if (!state.mapData) return;
+      const generation = ++routeGeneration;
+      state.activeRoute = null;
+      updateRouteTelemetry(null);
+      renderCanvas();
+      const blocked = Array.from(state.hazards).map(h => h.split(',').map(Number));
+      try {
+        const res = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            map_content: state.rawMapContent,
+            map_format: state.mapFormat,
+            start: [state.startPoint.x, state.startPoint.y],
+            corsia, campata,
+            turn_penalty: state.turnPenalty,
+            speed: state.speed,
+            blocked_cells: blocked
+          })
+        });
+        const data = await res.json();
+        if (generation !== routeGeneration) return;
+        if (data.status === 'ok') {
+          state.activeRoute = data.route;
+          updateRouteTelemetry(data.route);
+          renderCanvas();
+        } else {
+          alert('Route calculation failed: ' + data.message);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function requestPointRoute(goal) {
+      if (!state.mapData || !goal) return;
+      const generation = ++routeGeneration;
+      state.activeRoute = null;
+      updateRouteTelemetry(null);
+      renderCanvas();
+      const blocked = Array.from(state.hazards).map(h => h.split(',').map(Number));
+      try {
+        const res = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            map_content: state.rawMapContent,
+            map_format: state.mapFormat,
+            start: [state.startPoint.x, state.startPoint.y],
+            goal: [goal.x, goal.y],
+            turn_penalty: state.turnPenalty,
+            speed: state.speed,
+            blocked_cells: blocked
+          })
+        });
+        const data = await res.json();
+        if (generation !== routeGeneration) return;
+        if (data.status === 'ok') {
+          state.activeRoute = data.route;
+          updateRouteTelemetry(data.route);
+          renderCanvas();
+        } else {
+          alert('Route failed: ' + data.message);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function updateRouteTelemetry(route) {
+      route = route || {distance_meters: 0, estimated_time_sec: 0, steps: 0, turns: 0, points: []};
+      document.getElementById('metricDistance').textContent = `${route.distance_meters.toFixed(2)} m`;
+      document.getElementById('metricTime').textContent = `${route.estimated_time_sec.toFixed(1)} s`;
+      document.getElementById('metricSteps').textContent = route.steps;
+      document.getElementById('metricTurns').textContent = route.turns;
+
+      const wpList = document.getElementById('waypointList');
+      wpList.innerHTML = '';
+      document.getElementById('waypointCount').textContent = `${route.points.length} waypoints`;
+
+      route.points.forEach((pt, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center text-slate-300 py-0.5 border-b border-slate-800/60';
+        div.innerHTML = `<span>#${idx+1}: (${pt[0]}, ${pt[1]})</span>`;
+        wpList.appendChild(div);
+      });
+    }
+
+    // Canvas Rendering Loop
+    function renderCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      if (!state.mapData) return;
+
+      const m = state.mapData;
+      const cellSize = 36;
+
+      ctx.save();
+      ctx.translate(state.panX, state.panY);
+      ctx.scale(state.zoom, state.zoom);
+
+      // Draw grid cells
+      for (let y = 0; y < m.rows; y++) {
+        for (let x = 0; x < m.cols; x++) {
+          const cell = m.cells[y][x];
+          const px = x * cellSize;
+          const py = y * cellSize;
+
+          // Background color by cell type
+          if (cell.type === 1) { // Blocked rack
+            ctx.fillStyle = '#2563eb'; // blue-600
+          } else if (cell.type === 2) { // Transit rack
+            ctx.fillStyle = '#06b6d4'; // cyan-500
+          } else if (cell.type === 4) { // Obstacle
+            ctx.fillStyle = '#ef4444'; // red-500
+          } else if (cell.type === 3) { // Restricted
+            ctx.fillStyle = '#fde047'; // yellow
+          } else {
+            ctx.fillStyle = '#1e293b'; // slate-800
+          }
+
+          // Check dynamic hazard
+          if (state.hazards.has(`${x},${y}`)) {
+            ctx.fillStyle = '#f59e0b'; // amber-500
+          }
+
+          ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
+
+          // Rack Label (Corsia - Campata)
+          if (cell.bay) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${cell.bay.corsia}-${cell.bay.campata}`, px + cellSize / 2 - 1, py + cellSize / 2 - 1);
+
+            // Accessible dots
+            const sides = cell.bay.accessible_sides;
+            ctx.fillStyle = '#10b981'; // emerald-500
+            if (sides.up) drawDot(px + cellSize/2 - 1, py + 3);
+            if (sides.down) drawDot(px + cellSize/2 - 1, py + cellSize - 5);
+            if (sides.left) drawDot(px + 3, py + cellSize/2 - 1);
+            if (sides.right) drawDot(px + cellSize - 5, py + cellSize/2 - 1);
+          }
+
+          // Obstacle cross
+          if (cell.type === 4) {
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(px + 6, py + 6);
+            ctx.lineTo(px + cellSize - 8, py + cellSize - 8);
+            ctx.moveTo(px + cellSize - 8, py + 6);
+            ctx.lineTo(px + 6, py + cellSize - 8);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw Path Line
+      if (state.activeRoute && state.activeRoute.points.length > 1) {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+
+        state.activeRoute.points.forEach((pt, idx) => {
+          const cx = pt[0] * cellSize + cellSize / 2 - 1;
+          const cy = pt[1] * cellSize + cellSize / 2 - 1;
+          if (idx === 0) ctx.moveTo(cx, cy);
+          else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+
+        // Path step dots
+        state.activeRoute.points.forEach((pt) => {
+          const cx = pt[0] * cellSize + cellSize / 2 - 1;
+          const cy = pt[1] * cellSize + cellSize / 2 - 1;
+          ctx.fillStyle = '#34d399';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // Draw Start Vehicle Marker
+      if (state.startPoint) {
+        const sx = state.startPoint.x * cellSize + cellSize / 2 - 1;
+        const sy = state.startPoint.y * cellSize + cellSize / 2 - 1;
+        ctx.fillStyle = '#f97316'; // orange-500
+        ctx.beginPath();
+        ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Draw Goal Marker
+      if (state.goalPoint) {
+        const gx = state.goalPoint.x * cellSize + cellSize / 2 - 1;
+        const gy = state.goalPoint.y * cellSize + cellSize / 2 - 1;
+        ctx.fillStyle = '#10b981'; // emerald-500
+        ctx.beginPath();
+        ctx.arc(gx, gy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Draw Fleet Forklifts
+      state.fleet.forEach((f, idx) => {
+        const fx = f.x * cellSize + cellSize / 2 - 1;
+        const fy = f.y * cellSize + cellSize / 2 - 1;
+        ctx.fillStyle = '#8b5cf6'; // violet-500
+        ctx.beginPath();
+        ctx.arc(fx, fy, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${idx+1}`, fx, fy);
+      });
+
+      ctx.restore();
+    }
+
+    function drawDot(x, y) {
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function fitToScreen() {
+      if (!state.mapData) return;
+      const rect = canvas.getBoundingClientRect();
+      const cellSize = 36;
+      const mapWidth = state.mapData.cols * cellSize;
+      const mapHeight = state.mapData.rows * cellSize;
+
+      const scaleX = (rect.width - 80) / mapWidth;
+      const scaleY = (rect.height - 80) / mapHeight;
+      state.zoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.3), 2.5);
+
+      state.panX = (rect.width - mapWidth * state.zoom) / 2;
+      state.panY = (rect.height - mapHeight * state.zoom) / 2;
+      renderCanvas();
+    }
+
+    // Canvas Interactions (Click, Pan, Zoom)
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      state.zoom = Math.min(Math.max(state.zoom * zoomFactor, 0.2), 4.0);
+      renderCanvas();
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 1 || e.shiftKey) { // Pan with middle click or Shift
+        state.isPanning = true;
+        state.lastMouseX = e.clientX;
+        state.lastMouseY = e.clientY;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (state.isPanning) {
+        state.panX += e.clientX - state.lastMouseX;
+        state.panY += e.clientY - state.lastMouseY;
+        state.lastMouseX = e.clientX;
+        state.lastMouseY = e.clientY;
+        renderCanvas();
+        return;
+      }
+
+      // Inspect hovered cell
+      if (!state.mapData) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const cellSize = 36;
+
+      const cellX = Math.floor((mouseX - state.panX) / (cellSize * state.zoom));
+      const cellY = Math.floor((mouseY - state.panY) / (cellSize * state.zoom));
+
+      if (cellX >= 0 && cellX < state.mapData.cols && cellY >= 0 && cellY < state.mapData.rows) {
+        document.getElementById('inspX').textContent = cellX;
+        document.getElementById('inspY').textContent = cellY;
+        const cell = state.mapData.cells[cellY][cellX];
+        const types = ['Corridor', 'Rack (Blocked)', 'Rack (Transit)', 'One-Way', 'Obstacle'];
+        document.getElementById('inspType').textContent = types[cell.type] || 'Unknown';
+
+        const badge = document.getElementById('inspBayBadge');
+        if (cell.bay) {
+          badge.textContent = `C${cell.bay.corsia}-B${cell.bay.campata}`;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    });
+
+    window.addEventListener('mouseup', () => { state.isPanning = false; });
+
+    canvas.addEventListener('click', (e) => {
+      if (!state.mapData) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const cellSize = 36;
+
+      const x = Math.floor((mouseX - state.panX) / (cellSize * state.zoom));
+      const y = Math.floor((mouseY - state.panY) / (cellSize * state.zoom));
+
+      if (x < 0 || x >= state.mapData.cols || y < 0 || y >= state.mapData.rows) return;
+
+      const cell = state.mapData.cells[y][x];
+
+      if (state.mode === 'hazard') {
+        const key = `${x},${y}`;
+        if (state.hazards.has(key)) state.hazards.delete(key);
+        else state.hazards.add(key);
+        renderCanvas();
+        // Re-calculate route if active
+        if (state.selectedCorsia && state.selectedCampata) {
+          requestBayRoute(state.selectedCorsia, state.selectedCampata);
+        } else if (state.goalPoint) {
+          requestPointRoute(state.goalPoint);
+        }
+      } else if (state.mode === 'fleet') {
+        if (cell.type === 0) { // Place forklift on corridor
+          state.fleet.push({ id: state.fleet.length + 1, x, y });
+          renderFleetList();
+          renderCanvas();
+        } else if (cell.bay) {
+          state.selectedCorsia = cell.bay.corsia;
+          state.selectedCampata = cell.bay.campata;
+          document.getElementById('selectCorsia').value = cell.bay.corsia;
+          document.getElementById('selectCorsia').dispatchEvent(new Event('change'));
+          document.getElementById('selectCampata').value = cell.bay.campata;
+        }
+      } else if (state.mode === 'bay') {
+        if (cell.bay) {
+          state.selectedCorsia = cell.bay.corsia;
+          state.selectedCampata = cell.bay.campata;
+          document.getElementById('selectCorsia').value = cell.bay.corsia;
+          document.getElementById('selectCorsia').dispatchEvent(new Event('change'));
+          document.getElementById('selectCampata').value = cell.bay.campata;
+          requestBayRoute(cell.bay.corsia, cell.bay.campata);
+        } else if (cell.type === 0) {
+          state.startPoint = { x, y };
+          renderCanvas();
+          if (state.selectedCorsia && state.selectedCampata) {
+            requestBayRoute(state.selectedCorsia, state.selectedCampata);
+          }
+        }
+      } else if (state.mode === 'point') {
+        if (!state.startPoint || (state.startPoint && state.goalPoint)) {
+          state.startPoint = { x, y };
+          state.goalPoint = null;
+          state.activeRoute = null;
+        } else {
+          state.goalPoint = { x, y };
+          requestPointRoute(state.goalPoint);
+        }
+        renderCanvas();
+      }
+    });
+
+    function renderFleetList() {
+      const list = document.getElementById('fleetList');
+      list.innerHTML = '';
+      if (state.fleet.length === 0) {
+        list.innerHTML = '<span class="text-slate-500 italic block py-1">No forklifts placed yet. Click on canvas.</span>';
+        return;
+      }
+      state.fleet.forEach((f, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center bg-slate-900 border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-slate-300';
+        div.innerHTML = `<span><i class="fa-solid fa-truck-pickup text-violet-400 mr-1.5"></i> Forklift #${f.id} (${f.x}, ${f.y})</span>`;
+        list.appendChild(div);
+      });
+    }
+
+    document.getElementById('btnClearFleet').addEventListener('click', () => {
+      state.fleet = [];
+      renderFleetList();
+      renderCanvas();
+    });
+
+    document.getElementById('btnRunFleet').addEventListener('click', async () => {
+      if (state.fleet.length === 0) return alert('Place at least one forklift on the canvas first!');
+      if (!state.selectedCorsia || !state.selectedCampata) return alert('Select target aisle and bay first!');
+      const generation = ++routeGeneration;
+      state.activeRoute = null;
+      updateRouteTelemetry(null);
+      renderCanvas();
+
+      try {
+        const res = await fetch('/api/fleet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            map_content: state.rawMapContent,
+            map_format: state.mapFormat,
+            corsia: state.selectedCorsia,
+            campata: state.selectedCampata,
+            forklifts: state.fleet,
+            turn_penalty: state.turnPenalty,
+            speed: state.speed,
+            blocked_cells: Array.from(state.hazards).map(key => key.split(',').map(Number))
+          })
+        });
+        const data = await res.json();
+        if (generation !== routeGeneration) return;
+        if (data.status === 'ok') {
+          state.startPoint = { x: data.start[0], y: data.start[1] };
+          state.activeRoute = data.route;
+          updateRouteTelemetry(data.route);
+          alert(`Nearest Forklift: #${data.best_operator_id} (Distance: ${data.distance_meters.toFixed(2)}m)`);
+          renderCanvas();
+        } else {
+          alert('Fleet dispatch failed: ' + data.message);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    document.getElementById('btnClearHazards').addEventListener('click', () => {
+      state.hazards.clear();
+      renderCanvas();
+      if (state.selectedCorsia && state.selectedCampata) requestBayRoute(state.selectedCorsia, state.selectedCampata);
+      else if (state.goalPoint) requestPointRoute(state.goalPoint);
+    });
+
+    document.getElementById('btnClearPoints').addEventListener('click', () => {
+      ++routeGeneration;
+      state.startPoint = null;
+      state.goalPoint = null;
+      state.activeRoute = null;
+      updateRouteTelemetry(null);
+      renderCanvas();
+    });
+
+    // Mode Tab Switcher
+    const tabs = {
+      tabBay: { mode: 'bay', panel: 'panelBay' },
+      tabPoint: { mode: 'point', panel: 'panelPoint' },
+      tabFleet: { mode: 'fleet', panel: 'panelFleet' },
+      tabHazard: { mode: 'hazard', panel: 'panelHazard' }
+    };
+
+    Object.keys(tabs).forEach(tabId => {
+      document.getElementById(tabId).addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(b => {
+          b.className = 'mode-tab px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition text-slate-400 hover:text-slate-200';
+        });
+        document.getElementById(tabId).className = 'mode-tab active px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 transition bg-indigo-600 text-white shadow';
+
+        ['panelBay', 'panelPoint', 'panelFleet', 'panelHazard'].forEach(p => {
+          document.getElementById(p).classList.add('hidden');
+        });
+        document.getElementById(tabs[tabId].panel).classList.remove('hidden');
+        state.mode = tabs[tabId].mode;
+        if (state.mode === 'point') {
+          // Hazards should recalculate the point route, not a previously selected bay.
+          state.selectedCorsia = null;
+          state.selectedCampata = null;
+          document.getElementById('selectCorsia').value = '';
+          document.getElementById('selectCampata').value = '';
+          document.getElementById('selectCampata').disabled = true;
+        }
+        if (!state.startPoint && state.mode !== 'point') findInitialStart();
+      });
+    });
+
+    // Modals
+    const modalUpload = document.getElementById('modalUpload');
+    document.getElementById('btnUploadModal').addEventListener('click', () => modalUpload.classList.remove('hidden'));
+    document.getElementById('btnStudioModal').addEventListener('click', () => {
+      document.getElementById('textMapContent').value = state.rawMapContent
+        ? JSON.stringify(JSON.parse(state.rawMapContent), null, 2)
+        : '{"rows":12,"cols":16,"cells":[]}';
+      modalUpload.classList.remove('hidden');
+    });
+    document.getElementById('btnCloseUpload').addEventListener('click', () => modalUpload.classList.add('hidden'));
+    document.getElementById('btnCancelUpload').addEventListener('click', () => modalUpload.classList.add('hidden'));
+
+    const modalSettings = document.getElementById('modalSettings');
+    document.getElementById('btnSettingsModal').addEventListener('click', () => modalSettings.classList.remove('hidden'));
+    document.getElementById('btnCloseSettings').addEventListener('click', () => modalSettings.classList.add('hidden'));
+    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+      state.speed = parseFloat(document.getElementById('inputSpeed').value) || 1.5;
+      state.turnPenalty = parseInt(document.getElementById('inputTurnPenalty').value) || 0;
+      modalSettings.classList.add('hidden');
+    });
+
+    // Dropzone logic
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-indigo-500'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-indigo-500'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-indigo-500');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      if (file.size > 4 * 1024 * 1024) return alert('Map exceeds the 4 MiB limit.');
+      if (!/\.(xml|json|csv|tsv|txt|map)$/i.test(file.name)) return alert('Export your map as XML, JSON, CSV/TSV, or a text grid.');
+      const reader = new FileReader();
+      reader.onerror = () => alert('Could not read this file.');
+      reader.onload = (e) => {
+        document.getElementById('textMapContent').value = e.target.result;
+        loadMapContent(e.target.result);
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById('btnSubmitParse').addEventListener('click', () => {
+      const text = document.getElementById('textMapContent').value.trim();
+      if (!text) return alert('Please drop a file or paste map content!');
+      loadMapContent(text);
+    });
+
+    document.getElementById('btnLoadSample').addEventListener('click', async () => {
+      const res = await fetch('/api/default_map');
+      const d = await res.json();
+      document.getElementById('textMapContent').value = d.xml;
+    });
+
+    // Zoom buttons
+    document.getElementById('btnZoomIn').addEventListener('click', () => { state.zoom *= 1.2; renderCanvas(); });
+    document.getElementById('btnZoomOut').addEventListener('click', () => { state.zoom /= 1.2; renderCanvas(); });
+    document.getElementById('btnFit').addEventListener('click', fitToScreen);
+
+    // Export SVG
+    document.getElementById('btnExportSVG').addEventListener('click', () => {
+      if (!state.mapData) return;
+      const m = state.mapData;
+      const cellSize = 30;
+      const w = m.cols * cellSize + 40;
+      const h = m.rows * cellSize + 40;
+
+      let svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n`;
+      svg += `<rect width="100%" height="100%" fill="#0f172a"/>\n`;
+
+      for (let y = 0; y < m.rows; y++) {
+        for (let x = 0; x < m.cols; x++) {
+          const c = m.cells[y][x];
+          const px = 20 + x * cellSize;
+          const py = 20 + y * cellSize;
+          let fill = '#1e293b';
+          if (c.type === 1) fill = '#2563eb';
+          else if (c.type === 2) fill = '#06b6d4';
+          else if (c.type === 4) fill = '#ef4444';
+          svg += `<rect x="${px}" y="${py}" width="${cellSize-2}" height="${cellSize-2}" fill="${fill}" rx="3"/>\n`;
+        }
+      }
+
+      if (state.activeRoute) {
+        let pts = state.activeRoute.points.map(pt => `${20 + pt[0]*cellSize + cellSize/2},${20 + pt[1]*cellSize + cellSize/2}`).join(' ');
+        svg += `<polyline points="${pts}" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>\n`;
+      }
+      svg += `</svg>`;
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'warehouse_route.svg';
+      a.click();
+    });
+
+    resizeCanvas();
+    init();
+  </script>
+</body>
+</html>

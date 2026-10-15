@@ -1,0 +1,12 @@
+{
+  "rows": 5,
+  "cols": 7,
+  "cell_width_cm": 120,
+  "cell_height_cm": 100,
+  "cells": [
+    {"x": 2, "y": 2, "type": "rack", "corsia": 1, "campata": 1},
+    {"x": 3, "y": 2, "type": "rack", "corsia": 1, "campata": 2},
+    {"x": 5, "y": 3, "type": "wall"},
+    {"x": 0, "y": 1, "type": "oneway", "movements": ["down"]}
+  ]
+}

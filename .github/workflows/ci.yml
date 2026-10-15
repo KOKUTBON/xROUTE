@@ -1,0 +1,54 @@
+name: Build and validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: make demo-check demo
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+      - run: make all check
+      - name: Check C formatting
+        run: |
+          python -m pip install clang-format==18.1.8
+          make format-check
+      - name: Validate sample maps through the batch interface
+        run: |
+          PYTHONPATH=python python -m xroute validate examples/maps/warehouse.json
+          PYTHONPATH=python python -m xroute convert examples/maps/grid.txt --to xml -o /tmp/grid.xml
+          PYTHONPATH=python python -m xroute validate /tmp/grid.xml
+      - name: CMake build and tests (manual and presets)
+        run: |
+          cmake -S . -B build/cmake
+          cmake --build build/cmake
+          ctest --test-dir build/cmake --output-on-failure
+          cmake --preset asan
+          cmake --build --preset asan
+          ctest --preset asan
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: make sanitizer
